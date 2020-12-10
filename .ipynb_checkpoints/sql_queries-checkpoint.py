@@ -22,22 +22,22 @@ CREATE TABLE IF NOT EXISTS staging_events
 (
     artist VARCHAR,
     auth VARCHAR,
-    firstName VARCHAR(50),
+    first_name VARCHAR(50),
     gender CHAR,
-    itemInSession INTEGER,
-    lastName VARCHAR(50),
+    item_in_session INTEGER,
+    last_name VARCHAR(50),
     length FLOAT,
     level VARCHAR,
     location VARCHAR,
     method VARCHAR,
     page VARCHAR,
     registration FLOAT,
-    sessionId INTEGER,
+    session_id INTEGER,
     song VARCHAR,
     status INTEGER,
     ts BIGINT,
-    userAgent VARCHAR,
-    userId INTEGER
+    user_agent VARCHAR,
+    user_id INTEGER
 );
 """)
 
@@ -61,11 +61,11 @@ songplay_table_create = ("""
 CREATE TABLE IF NOT EXISTS songplays
 (
     songplay_id INTEGER IDENTITY (1,1) PRIMARY KEY,
-    start_time TIMESTAMP,
-    user_id INTEGER,
+    start_time TIMESTAMP NOT NULL REFERENCES time (start_time),
+    user_id INTEGER NOT NULL REFERENCES users (user_id),
     level VARCHAR,
-    song_id VARCHAR,
-    artist_id VARCHAR,
+    song_id VARCHAR NOT NULL REFERENCES songs (song_id),
+    artist_id VARCHAR NOT NULL REFERENCES artists (artist_id),
     session_id INTEGER,
     location VARCHAR,
     user_agent VARCHAR
@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS songs
 (
     song_id VARCHAR PRIMARY KEY,
     title VARCHAR,
-    artist_id VARCHAR,
+    artist_id VARCHAR NOT NULL,
     year INTEGER ENCODE BYTEDICT,
     duration FLOAT
 )
@@ -115,12 +115,12 @@ time_table_create = ("""
 CREATE TABLE IF NOT EXISTS time
 (
     start_time  TIMESTAMP PRIMARY KEY ,
-    hour INTEGER,
-    day INTEGER,
-    week INTEGER,
-    month INTEGER,
-    year INTEGER ENCODE BYTEDICT ,
-    weekday VARCHAR(9) ENCODE BYTEDICT
+    hour INTEGER NOT NULL,
+    day INTEGER NOT NULL,
+    week INTEGER NOT NULL,
+    month INTEGER NOT NULL,
+    year INTEGER ENCODE BYTEDICT NOT NULL,
+    weekday VARCHAR(9) ENCODE BYTEDICT  NOT NULL
 )
 DISTSTYLE KEY
 DISTKEY ( start_time )
@@ -152,13 +152,13 @@ songplay_table_insert = ("""
 INSERT INTO songplays (start_time, user_id, level, song_id, artist_id, session_id, location, user_agent)
 SELECT DISTINCT
        TIMESTAMP 'epoch' + (se.ts / 1000) * INTERVAL '1 second' as start_time,
-                se.userId,
+                se.user_id,
                 se.level,
                 ss.song_id,
                 ss.artist_id,
-                se.sessionId,
+                se.session_id,
                 se.location,
-                se.userAgent
+                se.user_agent
 FROM staging_songs ss
 INNER JOIN staging_events se
 ON (ss.title = se.song AND se.artist = ss.artist_name)
@@ -167,9 +167,9 @@ AND se.page = 'NextSong';
 
 user_table_insert = ("""
 INSERT INTO users
-SELECT DISTINCT userId, firstName, lastName, gender, level
+SELECT DISTINCT user_id, first_name, last_name, gender, level
 FROM staging_events
-WHERE userId IS NOT NULL
+WHERE user_id IS NOT NULL
 AND page = 'NextSong';
 """)
 
@@ -201,7 +201,7 @@ FROM staging_events;
 
 # QUERY LISTS
 
-create_table_queries = [staging_events_table_create, staging_songs_table_create, songplay_table_create, user_table_create, song_table_create, artist_table_create, time_table_create]
+create_table_queries = [staging_events_table_create, staging_songs_table_create, user_table_create, song_table_create, artist_table_create, time_table_create,  songplay_table_create]
 drop_table_queries = [staging_events_table_drop, staging_songs_table_drop, songplay_table_drop, user_table_drop, song_table_drop, artist_table_drop, time_table_drop]
 copy_table_queries = [staging_events_copy, staging_songs_copy]
 insert_table_queries = [songplay_table_insert, user_table_insert, song_table_insert, artist_table_insert, time_table_insert]
